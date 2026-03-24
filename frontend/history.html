@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Emotion History — Emotion Voice AI</title>
+<link rel="stylesheet" href="style.css"/>
+<style>
+body{overflow-y:auto}
+.emotion-chart{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px}
+.echart-card{padding:18px;border-radius:16px;background:linear-gradient(145deg,rgba(20,18,50,.8),rgba(12,11,30,.9));border:1px solid var(--border);text-align:center;transition:all .25s;cursor:default}
+.echart-card:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(0,0,0,.3)}
+.ec-emoji{font-size:28px;margin-bottom:8px}
+.ec-name{font-size:12px;font-weight:500;margin-bottom:4px;text-transform:capitalize}
+.ec-count{font-family:var(--font-h);font-size:22px;font-weight:700}
+.ec-bar{height:4px;border-radius:2px;margin-top:8px}
+
+.hist-item{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--border);animation:msgIn .3s ease}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.hist-item:last-child{border:none}
+.hist-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.hist-meta{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.hist-time{font-size:11px;color:var(--muted)}
+.hist-emo{font-size:10px;padding:2px 8px;border-radius:10px;border:1px solid;letter-spacing:.04em}
+.hist-q{font-size:13px;color:var(--muted);margin-bottom:4px}
+.hist-q span{color:var(--text)}
+.hist-a{font-size:13px;line-height:1.6;color:var(--muted)}
+.clear-hist-btn{padding:8px 18px;border-radius:10px;border:1px solid rgba(240,96,138,.3);background:rgba(240,96,138,.08);color:var(--rose);font-size:12px;cursor:pointer;font-family:var(--font-b);transition:all .2s}
+.clear-hist-btn:hover{background:rgba(240,96,138,.15);border-color:var(--rose)}
+.stat-bar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:8px}
+.stat-fill{height:100%;border-radius:3px;transition:width 1s ease}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
+
+<nav class="top-nav">
+  <a href="dashboard.html" class="back-btn">← Dashboard</a>
+  <div style="flex:1">
+    <div class="page-h" style="background:linear-gradient(90deg,var(--rose),var(--amber));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">EMOTION HISTORY</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:2px">Your emotional journey and conversation patterns</div>
+  </div>
+  <div class="nav-right">
+    <button class="clear-hist-btn" onclick="clearHistory()">Clear History</button>
+    <div id="nav-user-area" style="display:flex;align-items:center;gap:8px"></div>
+  </div>
+</nav>
+
+<div class="page-wrap" style="position:relative;z-index:10">
+
+  <!-- Emotion chart cards -->
+  <div class="sec-title">EMOTION BREAKDOWN</div>
+  <div class="emotion-chart" id="emo-chart">
+    <div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:13px;padding:20px">No emotion data yet — start chatting!</div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="card-3d" style="padding:24px">
+    <div class="sec-title">CONVERSATION TIMELINE</div>
+    <div id="hist-timeline">
+      <div class="empty-state"><div class="ei">📭</div><p>No conversations yet.<br>Head to <a href="chat.html" style="color:var(--v2)">Chat</a> and start talking!</p></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+<script>
+const user = Auth.require();
+if(user) renderNav(user);
+const email = user?.email;
+
+function load(){
+  const chatData = Auth.getData(email,'chat');
+
+  // Rebuild emo stats
+  const emoStats={};
+  chatData.filter(m=>m.role==='ai'&&m.emotion).forEach(m=>{ emoStats[m.emotion]=(emoStats[m.emotion]||0)+1; });
+  const total=Object.values(emoStats).reduce((a,b)=>a+b,0)||1;
+
+  // Chart
+  const chartEl=document.getElementById('emo-chart');
+  if(!Object.keys(emoStats).length){
+    chartEl.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:13px;padding:20px">No emotion data yet — start chatting!</div>';
+  } else {
+    chartEl.innerHTML=Object.entries(emoStats).sort((a,b)=>b[1]-a[1]).map(([emo,cnt])=>`
+      <div class="echart-card" style="border-color:${EC[emo]||'#fff'}30">
+        <div class="ec-emoji">${EMO_EMOJI[emo]||'💬'}</div>
+        <div class="ec-name">${emo}</div>
+        <div class="ec-count" style="color:${EC[emo]||'#fff'}">${cnt}</div>
+        <div class="ec-bar" style="width:${Math.round(cnt/total*100)}%;background:${EC[emo]||'#fff'}50;margin:8px auto 0"></div>
+      </div>`).join('');
+  }
+
+  // Timeline
+  const timelineEl=document.getElementById('hist-timeline');
+  const userMsgs=chatData.filter(m=>m.role==='user');
+  if(!userMsgs.length){
+    timelineEl.innerHTML='<div class="empty-state"><div class="ei">📭</div><p>No conversations yet.<br>Head to <a href="chat.html" style="color:var(--v2)">Chat</a> and start talking!</p></div>';
+    return;
+  }
+  timelineEl.innerHTML=userMsgs.slice(-30).reverse().map(m=>{
+    const idx=chatData.indexOf(m);
+    const ai=chatData[idx+1];
+    const c=EC[m.emotion]||'#A594FF';
+    return `<div class="hist-item">
+      <div class="hist-dot" style="background:${c};box-shadow:0 0 8px ${c}60"></div>
+      <div style="flex:1">
+        <div class="hist-meta">
+          <span class="hist-time">${m.time||''}</span>
+          ${m.emotion?`<span class="hist-emo" style="color:${c};border-color:${c}40;background:${c}15">${m.emotion}</span>`:''}
+        </div>
+        <div class="hist-q">You: <span>${m.content.length>80?m.content.slice(0,80)+'…':m.content}</span></div>
+        ${ai?`<div class="hist-a">${ai.content.length>100?ai.content.slice(0,100)+'…':ai.content}</div>`:''}
+      </div>
+    </div>`;}).join('');
+}
+
+function clearHistory(){
+  if(!confirm('Clear all conversation history? This cannot be undone.'))return;
+  Auth.setData(email,'chat',[]);
+  load();
+}
+
+load();
+</script>
+</body>
+</html>

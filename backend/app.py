@@ -1,32 +1,38 @@
-from flask import Flask, jsonify, request
+from flask import Flask, send_from_directory
+from flask_cors import CORS
+from dotenv import load_dotenv
+import os
 
-app = Flask(__name__)
+# Load .env from the parent folder (emotion-voice-ai/.env)
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-# Home Route
+app = Flask(__name__, static_folder="../frontend")
+app.secret_key = os.getenv("SECRET_KEY", "dev-secret-change-me")
+CORS(app, supports_credentials=True)
+
+from chat_routes     import chat_bp
+from bmi_calculator  import bmi_bp
+from recommendations import rec_bp
+
+app.register_blueprint(chat_bp)
+app.register_blueprint(bmi_bp)
+app.register_blueprint(rec_bp)
+
 @app.route("/")
-def home():
-    return "Flask Server Running Successfully 🚀"
+def index():
+    return send_from_directory("../frontend", "login.html")
 
-# Health Check Route
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({
-        "status": "OK",
-        "message": "Server is healthy"
-    })
-
-# Chat Route
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.get_json()
-
-    user_message = data.get("message")
-
-    response = {
-        "reply": f"You said: {user_message}"
-    }
-
-    return jsonify(response)
+@app.route("/<path:path>")
+def static_files(path):
+    return send_from_directory("../frontend", path)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    key = os.getenv("GROQ_API_KEY", "")
+    murf = os.getenv("MURF_API_KEY", "")
+    print("\n=== Emotion Voice AI starting ===")
+    print(f"   GROQ key : {'[OK] ' + key[:15] + '...' if key else '[MISSING]'}")
+    print(f"   Murf key   : {'[OK] set' if murf else '[NOT SET]'}")
+    print(f"   Model      : {os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant')}")
+    print("   Open       : http://localhost:5000")
+    print("=================================\n")
+    app.run(debug=True, port=5000, use_reloader=False)

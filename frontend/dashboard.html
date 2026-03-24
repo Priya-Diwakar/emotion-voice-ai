@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dashboard — Emotion Voice AI</title>
+<link rel="stylesheet" href="style.css"/>
+<style>body{overflow-y:auto}</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
+<nav class="top-nav">
+  <a href="dashboard.html" class="nav-logo"><div class="ring">🎙</div><span>EMOTION · AI</span></a>
+  <div class="nav-right" id="nav-user-area"></div>
+</nav>
+<div class="page-wrap" style="position:relative;z-index:10">
+  <div class="welcome-banner">
+    <div class="wb-greeting">Good to see you</div>
+    <div class="wb-name" id="wb-name">Hello!</div>
+    <div class="wb-sub">Your emotion AI is ready. Chat, check your BMI, or review your emotional journey.</div>
+    <div class="wb-stats">
+      <div class="wb-stat"><div class="sv" id="stat-chats">0</div><div class="sl">CHATS</div></div>
+      <div class="wb-stat"><div class="sv" id="stat-emo">-</div><div class="sl">TOP EMOTION</div></div>
+      <div class="wb-stat"><div class="sv" id="stat-bmi">-</div><div class="sl">LAST BMI</div></div>
+    </div>
+  </div>
+  <div class="sec-title">CHOOSE YOUR EXPERIENCE</div>
+  <div class="cards-grid">
+    <a href="chat.html" class="feat-card card-chat">
+      <span class="fc-icon">💬</span>
+      <div class="fc-title">Emotion Chat</div>
+      <div class="fc-desc">AI detects your emotional state and responds with a tone matched to how you feel. Murf Falcon speaks the reply.</div>
+      <div class="fc-tags">
+        <span class="fc-tag" style="color:#A899FF;border-color:rgba(168,153,255,.3)">GPT-4o-mini</span>
+        <span class="fc-tag" style="color:#4DD9C0;border-color:rgba(77,217,192,.3)">Murf Falcon</span>
+        <span class="fc-tag" style="color:#F06292;border-color:rgba(240,98,146,.3)">Emotion AI</span>
+      </div>
+      <div class="fc-arrow" style="background:rgba(139,124,246,.15);color:var(--v2)">→</div>
+    </a>
+    <a href="bmi.html" class="feat-card card-bmi">
+      <span class="fc-icon">⚖️</span>
+      <div class="fc-title">BMI &amp; Health</div>
+      <div class="fc-desc">Calculate your BMI and get GPT-powered personalized health recommendations instantly.</div>
+      <div class="fc-tags">
+        <span class="fc-tag" style="color:#4DD9C0;border-color:rgba(61,207,186,.3)">AI Recs</span>
+        <span class="fc-tag" style="color:#A899FF;border-color:rgba(168,153,255,.3)">Health</span>
+      </div>
+      <div class="fc-arrow" style="background:rgba(61,207,186,.1);color:var(--cyan)">→</div>
+    </a>
+    <a href="history.html" class="feat-card card-history">
+      <span class="fc-icon">📊</span>
+      <div class="fc-title">Emotion History</div>
+      <div class="fc-desc">Review past conversations, track emotional patterns and your wellness journey over time.</div>
+      <div class="fc-tags">
+        <span class="fc-tag" style="color:#F06292;border-color:rgba(240,98,146,.3)">Analytics</span>
+        <span class="fc-tag" style="color:#F9A825;border-color:rgba(249,168,37,.3)">Trends</span>
+      </div>
+      <div class="fc-arrow" style="background:rgba(240,98,146,.1);color:var(--rose)">→</div>
+    </a>
+  </div>
+  <div class="two-col">
+    <div class="card-3d" style="padding:20px"><div class="sec-title">EMOTION SUMMARY</div><div id="emo-summary"></div></div>
+    <div class="card-3d" style="padding:20px"><div class="sec-title">RECENT ACTIVITY</div><div id="activity"></div></div>
+  </div>
+</div>
+<script src="app.js"></script>
+<script>
+const user=Auth.require();if(!user)throw '';
+renderNav(user);
+const email=user.email;
+const chatData=Auth.getData(email,'chat');
+const bmiData=Auth.getData(email,'bmi');
+const emoStats={};
+chatData.filter(m=>m.role==='ai'&&m.emotion).forEach(m=>{emoStats[m.emotion]=(emoStats[m.emotion]||0)+1;});
+document.getElementById('wb-name').textContent='Hello, '+user.name.split(' ')[0]+'!';
+document.getElementById('stat-chats').textContent=chatData.filter(m=>m.role==='user').length;
+const topEmo=Object.entries(emoStats).sort((a,b)=>b[1]-a[1])[0];
+document.getElementById('stat-emo').textContent=topEmo?topEmo[0]:'-';
+const lastBMI=Array.isArray(bmiData)?bmiData[bmiData.length-1]:null;
+document.getElementById('stat-bmi').textContent=lastBMI?lastBMI.bmi:'-';
+const emoEl=document.getElementById('emo-summary');
+const total=Object.values(emoStats).reduce((a,b)=>a+b,0)||1;
+if(!Object.keys(emoStats).length){
+  emoEl.innerHTML='<div style="text-align:center;color:var(--muted);font-size:13px;padding:16px 0">Start chatting to see your emotion patterns</div>';
+}else{
+  emoEl.innerHTML=Object.entries(emoStats).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([emo,cnt])=>'<div class="emo-row"><div class="emo-dot" style="background:'+(EC[emo]||'#fff')+'"></div><div class="emo-label">'+emo+'</div><div class="emo-bar-wrap"><div class="emo-bar-fill" style="width:'+Math.round(cnt/total*100)+'%;background:'+(EC[emo]||'#fff')+'60"></div></div><div class="emo-pct">'+Math.round(cnt/total*100)+'%</div></div>').join('');
+}
+const actEl=document.getElementById('activity');
+const recent=chatData.filter(m=>m.role==='user').slice(-4).reverse();
+if(!recent.length){
+  actEl.innerHTML='<div style="text-align:center;color:var(--muted);font-size:13px;padding:16px 0">No activity yet</div>';
+}else{
+  actEl.innerHTML=recent.map(m=>'<div class="activity-item"><div class="act-icon">'+(EMO_EMOJI[m.emotion]||'💬')+'</div><div><div class="act-title">'+(m.content.length>45?m.content.slice(0,45)+'...':m.content)+'</div><div class="act-sub">Emotion: '+(m.emotion||'unknown')+' · '+(m.time||'')+'</div></div></div>').join('');
+}
+</script>
+</body>
+</html>

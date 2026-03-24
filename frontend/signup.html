@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Sign Up — Emotion Voice AI</title>
+<link rel="stylesheet" href="style.css"/>
+<style>
+body{display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:hidden}
+.wrap{width:100%;max-width:440px;padding:20px;position:relative;z-index:10}
+.logo{text-align:center;margin-bottom:28px}
+.logo-ring{width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,var(--v),var(--rose));display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 12px;box-shadow:0 0 40px rgba(139,124,246,.45);animation:lp 3s ease-in-out infinite}
+@keyframes lp{0%,100%{box-shadow:0 0 40px rgba(139,124,246,.45)}50%{box-shadow:0 0 60px rgba(139,124,246,.7),0 0 80px rgba(240,98,146,.3)}}
+.logo h1{font-family:var(--font-h);font-size:16px;font-weight:700;letter-spacing:.1em;background:linear-gradient(90deg,var(--v2),var(--rose));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo p{font-size:11px;color:var(--muted);margin-top:4px}
+.box{padding:32px 28px}
+.btitle{font-family:var(--font-h);font-size:19px;font-weight:700;letter-spacing:.04em;margin-bottom:5px}
+.bsub{font-size:13px;color:var(--muted);margin-bottom:22px}
+.field{margin-bottom:15px}
+.field label{display:block;font-size:11px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px}
+.field input{width:100%;padding:11px 14px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-b);font-size:14px;outline:none;transition:all .2s}
+.field input:focus{border-color:var(--v);box-shadow:0 0 0 3px rgba(139,124,246,.15)}
+.field input::placeholder{color:var(--muted)}
+.btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--v),#6358E8);border:none;border-radius:12px;color:#fff;font-family:var(--font-h);font-size:13px;font-weight:700;letter-spacing:.08em;cursor:pointer;box-shadow:0 8px 28px rgba(139,124,246,.4);transition:all .2s;margin-top:4px}
+.btn:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(139,124,246,.5)}
+.btn:active{transform:translateY(0)}
+.div{display:flex;align-items:center;gap:12px;margin:18px 0;font-size:12px;color:var(--muted)}
+.div::before,.div::after{content:'';flex:1;height:1px;background:var(--border)}
+.sw{text-align:center;font-size:13px;color:var(--muted)}
+.sw a{color:var(--v2);text-decoration:none;font-weight:500}
+.sw a:hover{color:#fff}
+.err{background:rgba(240,98,146,.1);border:1px solid rgba(240,98,146,.3);color:var(--rose);padding:10px 14px;border-radius:10px;font-size:12px;margin-bottom:14px;display:none}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
+<div class="wrap">
+  <div class="logo">
+    <div class="logo-ring">🎙</div>
+    <h1>EMOTION · VOICE · AI</h1>
+    <p>Create your account to get started</p>
+  </div>
+  <div class="card-3d box">
+    <div class="btitle">Create account</div>
+    <div class="bsub">Join and start your emotional wellness journey</div>
+    <div class="err" id="err"></div>
+    <div class="field"><label>Full name</label><input type="text" id="name" placeholder="Vishal Kumar" autocomplete="name"/></div>
+    <div class="field"><label>Email address</label><input type="email" id="email" placeholder="you@example.com" autocomplete="email"/></div>
+    <div class="field"><label>Password</label><input type="password" id="pass" placeholder="Minimum 6 characters" autocomplete="new-password"/></div>
+    <button class="btn" onclick="doSignup()">CREATE ACCOUNT</button>
+    <div class="div">or</div>
+    <div class="sw">Already have an account? <a href="login.html">Sign in →</a></div>
+  </div>
+</div>
+<script src="app.js"></script>
+<script>
+if(Auth.currentEmail()) window.location.href='dashboard.html';
+function doSignup(){
+  const name=document.getElementById('name').value.trim();
+  const email=document.getElementById('email').value.trim();
+  const pass=document.getElementById('pass').value;
+  const err=document.getElementById('err');
+  err.style.display='none';
+  const r=Auth.signup(name,email,pass);
+  if(!r.ok){err.textContent=r.msg;err.style.display='block';return;}
+  window.location.href='dashboard.html';
+}
+document.getElementById('pass').addEventListener('keydown',e=>{if(e.key==='Enter')doSignup();});
+</script>
+</body>
+</html>
