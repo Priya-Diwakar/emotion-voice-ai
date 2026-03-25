@@ -1,10 +1,13 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify
 from groq import Groq
 import os
 from emotion_engine import detect_emotion, get_tone_instruction
 from murf_tts import text_to_speech, is_configured as murf_configured, get_status as murf_status
 
 chat_bp = Blueprint("chat", __name__)
+
+# In-memory history (fixes Render session issue)
+chat_history = []
 
 BASE_SYSTEM_PROMPT = """You are Emotion Voice AI — an empathetic and knowledgeable assistant.
 
@@ -37,6 +40,7 @@ def get_fallback(emotion):
 
 @chat_bp.route("/api/chat", methods=["POST"])
 def chat():
+    global chat_history
     print("\n" + "="*40)
     print("CHAT CALLED")
 
@@ -58,16 +62,13 @@ def chat():
         print(f"EMOTION: {emotion}")
     except Exception as e:
         print(f"EMOTION ERROR: {e}")
-        emotion    = "neutral"
-        confidence = 0.5
-        tone       = ""
+        emotion      = "neutral"
+        confidence   = 0.5
+        tone         = ""
         emotion_data = {"emotion": emotion, "confidence": confidence, "reason": ""}
 
-    # Chat history
-    if "history" not in session:
-        session["history"] = []
-    history = session["history"][-20:]
-
+    # Build messages with history (last 10 exchanges)
+    history = chat_history[-20:]
     system_prompt = f"{BASE_SYSTEM_PROMPT}\n\nEmotion context: {tone}"
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(history)
@@ -78,20 +79,27 @@ def chat():
     groq_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
     ai_reply   = None
 
-    print(f"KEY: {groq_key[:15]}... MODEL: {groq_model}")
+    print(f"KEY: {'SET ' + groq_key[:15] + '...' if groq_key else 'MISSING'}")
+    print(f"MODEL: {groq_model}")
 
-    try:
-        client = Groq(api_key=groq_key)
-        resp = client.chat.completions.create(
-            model=groq_model,
-            messages=messages,
-            max_tokens=300,
-            temperature=0.75
-        )
-        ai_reply = resp.choices[0].message.content.strip()
-        print(f"GROQ OK: {ai_reply[:60]}")
-    except Exception as e:
-        print(f"GROQ ERROR: {type(e).__name__}: {e}")
+    if not groq_key:
+        print("ERROR: GROQ_API_KEY is not set!")
+        ai_reply = get_fallback(emotion)
+    else:
+        try:
+            client = Groq(api_key=groq_key)
+            resp = client.chat.completions.create(
+                model=groq_model,
+                messages=messages,
+                max_tokens=400,
+                temperature=0.75
+            )
+            ai_reply = resp.choices[0].message.content.strip()
+            print(f"GROQ OK: {ai_reply[:80]}")
+        except Exception as e:
+            print(f"GROQ ERROR TYPE: {type(e).__name__}")
+            print(f"GROQ ERROR MSG:  {e}")
+            ai_reply = None
 
     used_fallback = False
     if not ai_reply:
@@ -99,14 +107,14 @@ def chat():
         used_fallback = True
         print("USING FALLBACK")
 
-    print(f"REPLY: {ai_reply[:60]}")
+    print(f"FINAL REPLY: {ai_reply[:80]}")
     print("="*40)
 
-    # Save history
-    history.append({"role": "user",      "content": user_msg})
-    history.append({"role": "assistant", "content": ai_reply})
-    session["history"] = history
-    session.modified   = True
+    # Save to in-memory history
+    chat_history.append({"role": "user",      "content": user_msg})
+    chat_history.append({"role": "assistant", "content": ai_reply})
+    if len(chat_history) > 20:
+        chat_history = chat_history[-20:]
 
     # Response
     response_data = {
@@ -114,7 +122,7 @@ def chat():
         "emotion":       emotion,
         "confidence":    confidence,
         "reason":        emotion_data.get("reason", ""),
-        "history_len":   len(history) // 2,
+        "history_len":   len(chat_history) // 2,
         "used_fallback": used_fallback,
         "murf_ready":    murf_configured(),
     }
@@ -136,7 +144,8 @@ def chat():
 
 @chat_bp.route("/api/chat/clear", methods=["POST"])
 def clear_history():
-    session.pop("history", None)
+    global chat_history
+    chat_history = []
     return jsonify({"status": "cleared"})
 
 
