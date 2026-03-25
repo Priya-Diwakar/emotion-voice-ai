@@ -6,7 +6,11 @@ import os
 # Load .env from the parent folder (emotion-voice-ai/.env)
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-app = Flask(__name__, static_folder="../frontend")
+# Absolute paths — works on both local and Render
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
+
+app = Flask(__name__, static_folder=FRONTEND_DIR)
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-change-me")
 CORS(app, supports_credentials=True)
 
@@ -20,11 +24,11 @@ app.register_blueprint(rec_bp)
 
 @app.route("/")
 def index():
-    return send_from_directory("../frontend", "login.html")
+    return send_from_directory(FRONTEND_DIR, "login.html")
 
 @app.route("/<path:path>")
 def static_files(path):
-    return send_from_directory("../frontend", path)
+    return send_from_directory(FRONTEND_DIR, path)
 
 if __name__ == "__main__":
     key = os.getenv("GROQ_API_KEY", "")
@@ -35,4 +39,4 @@ if __name__ == "__main__":
     print(f"   Model      : {os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant')}")
     print("   Open       : http://localhost:5000")
     print("=================================\n")
-    app.run(debug=True, port=5000, use_reloader=False) 
+    app.run(debug=True, port=5000, use_reloader=False)

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: emotion-voice-ai
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && gunicorn app:app
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+      - key: MURF_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
